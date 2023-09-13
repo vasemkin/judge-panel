@@ -42,7 +42,7 @@ contract JudgePanel {
         uint256 judgeCount = judges.length;
 
 
-        for (uint256 i; i < judgeCount; i++) {
+        for (uint256 i; i < judgeCount; ++i) {
             _judges[judges[i]] = true;
         } 
 
