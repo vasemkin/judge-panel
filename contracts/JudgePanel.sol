@@ -13,10 +13,10 @@ contract JudgePanel {
 
     bytes32 private _proposal;
 
-    uint256 private _votingStarted;
-    uint256 private _judgeCount;
-    uint256 private _medianScore;
-    uint256 private _reveals;
+    uint64 private _votingStarted;
+    uint64 private _judgeCount;
+    uint64 private _medianScore;
+    uint64 private _reveals;
 
     mapping(address => bool) private _judges;
     mapping(address => bytes32) private _scores;
@@ -39,16 +39,20 @@ contract JudgePanel {
     /// @param  judges      Array of addresses that are able to set scores
     function init(bytes32 proposal, address[] calldata judges) onlyPhaze(Phaze.INITIAL) public {
         _proposal = proposal;
-        uint256 judgeCount = judges.length;
+        uint64 judgeCount = uint64(judges.length);
 
 
-        for (uint256 i; i < judgeCount; ++i) {
+        for (uint256 i; i < judgeCount;) {
             _judges[judges[i]] = true;
+
+            unchecked {
+                ++i;
+            }
         } 
 
         _judgeCount = judgeCount;
         phaze = Phaze.COMMIT;
-        _votingStarted = block.timestamp;
+        _votingStarted = uint64(block.timestamp);
 
         emit VotingStarted(msg.sender);
     }
@@ -71,8 +75,12 @@ contract JudgePanel {
     function revealScore(uint256 score, uint256 nullifier) public onlyPhaze(Phaze.REVEAL) onlyJudge {    
         require(_scoreInRange(score) && _validScoreHash(score, nullifier), "JP: Reveal failed");
 
-        uint256 reveals = ++_reveals;
-        _medianScore = (_medianScore + score) / reveals;
+        uint256 reveals;
+        unchecked {
+            reveals = ++_reveals;
+        }
+
+        _medianScore = uint64((_medianScore + score) / reveals);
     }
 
     /// @notice             Starts the final phaze
