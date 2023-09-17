@@ -35,10 +35,11 @@ describe("JudgePanel", function () {
                 deployJudgePanel,
             )
 
-            await judgePanel.init(encodeBytes32String("my proposal"), [
-                owner,
-                otherAccount,
-            ])
+            await judgePanel.init(
+                encodeBytes32String("my proposal"),
+                [owner, otherAccount],
+                BigInt(FIVE_MINUTES),
+            )
 
             const ownerIsAJudge = await judgePanel.isJudge(owner)
             const otherIsAJudge = await judgePanel.isJudge(otherAccount)
@@ -52,10 +53,11 @@ describe("JudgePanel", function () {
                 deployJudgePanel,
             )
 
-            await judgePanel.init(encodeBytes32String("my proposal"), [
-                owner,
-                otherAccount,
-            ])
+            await judgePanel.init(
+                encodeBytes32String("my proposal"),
+                [owner, otherAccount],
+                BigInt(FIVE_MINUTES),
+            )
 
             await expect(
                 judgePanel.connect(owner).commitScore(scoreHash(4n, 5n)),
@@ -71,10 +73,11 @@ describe("JudgePanel", function () {
                 deployJudgePanel,
             )
 
-            await judgePanel.init(encodeBytes32String("my proposal"), [
-                owner,
-                otherAccount,
-            ])
+            await judgePanel.init(
+                encodeBytes32String("my proposal"),
+                [owner, otherAccount],
+                FIVE_MINUTES,
+            )
 
             await judgePanel.connect(owner).commitScore(scoreHash(4n, 1n))
             await judgePanel
@@ -97,11 +100,11 @@ describe("JudgePanel", function () {
             const { judgePanel, owner, otherAccount, thirdAccount } =
                 await loadFixture(deployJudgePanel)
 
-            await judgePanel.init(encodeBytes32String("my proposal"), [
-                owner,
-                otherAccount,
-                thirdAccount,
-            ])
+            await judgePanel.init(
+                encodeBytes32String("my proposal"),
+                [owner, otherAccount, thirdAccount],
+                BigInt(FIVE_MINUTES),
+            )
 
             await judgePanel.connect(owner).commitScore(scoreHash(4n, 1n))
 
