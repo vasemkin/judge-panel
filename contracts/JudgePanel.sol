@@ -15,7 +15,7 @@ contract JudgePanel {
 
     uint64 private _votingStarted;
     uint64 private _judgeCount;
-    uint64 private _medianScore;
+    uint64 private _totalScore;
     uint64 private _reveals;
 
     mapping(address => bool) private _judges;
@@ -31,6 +31,11 @@ contract JudgePanel {
 
     modifier onlyPhaze(Phaze _phaze) {
         require(phaze == _phaze, "JP: Wrong phase");
+        _;
+    }
+
+    modifier onlyOneVote() {
+        require(_scores[msg.sender] == 0x00, "JP: Only one vote");
         _;
     }
 
@@ -59,7 +64,7 @@ contract JudgePanel {
 
     /// @notice             Judge commits a score to be revealed later
     /// @param  scoreHash   keccak256(encodePacked(uint256 score, uin256 nullifier))
-    function commitScore(bytes32 scoreHash) public onlyPhaze(Phaze.COMMIT) onlyJudge {
+    function commitScore(bytes32 scoreHash) public onlyPhaze(Phaze.COMMIT) onlyJudge onlyOneVote {
         _scores[msg.sender] = scoreHash;
     }
 
@@ -75,12 +80,11 @@ contract JudgePanel {
     function revealScore(uint256 score, uint256 nullifier) public onlyPhaze(Phaze.REVEAL) onlyJudge {    
         require(_scoreInRange(score) && _validScoreHash(score, nullifier), "JP: Reveal failed");
 
-        uint256 reveals;
         unchecked {
-            reveals = ++_reveals;
+            ++_reveals;
         }
 
-        _medianScore = uint64((_medianScore + score) / reveals);
+        _totalScore = _totalScore + uint64(score);
     }
 
     /// @notice             Starts the final phaze
@@ -88,12 +92,12 @@ contract JudgePanel {
         require(_judgeCount == _reveals, "JP: Not all judges revealed");
         phaze = Phaze.FINALIZED;
 
-        emit VotingEnded(_medianScore);
+        emit VotingEnded(getMedian());
     }
 
     /// @notice             Returns the median score
     function getMedian() onlyPhaze(Phaze.FINALIZED) public view returns (uint256) {
-        return _medianScore;
+        return (_totalScore / _reveals);
     }
 
     /// @notice             Judge helper

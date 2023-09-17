@@ -7,6 +7,12 @@ import { encodeBytes32String } from "ethers"
 import { ethers } from "hardhat"
 
 const FIVE_MINUTES = 60 * 5
+const ERRORS = {
+    onlyOneVote: "JP: Only one vote",
+    wrongPhase: "JP: Wrong phase",
+    notJudge: "JP: Not a judge",
+    notAllJudges: "JP: Not all judges revealed",
+}
 
 const scoreHash = (score: bigint, nullifier: bigint) =>
     ethers.keccak256(
@@ -15,12 +21,12 @@ const scoreHash = (score: bigint, nullifier: bigint) =>
 
 describe("JudgePanel", function () {
     async function deployJudgePanel() {
-        const [owner, otherAccount] = await ethers.getSigners()
+        const [owner, otherAccount, thirdAccount] = await ethers.getSigners()
 
         const JudgePanel = await ethers.getContractFactory("JudgePanel")
         const judgePanel = await JudgePanel.deploy()
 
-        return { judgePanel, owner, otherAccount }
+        return { judgePanel, owner, otherAccount, thirdAccount }
     }
 
     describe("Core logic", function () {
@@ -88,32 +94,45 @@ describe("JudgePanel", function () {
         })
 
         it("Calculates the right median", async function () {
-            const { judgePanel, owner, otherAccount } = await loadFixture(
-                deployJudgePanel,
-            )
+            const { judgePanel, owner, otherAccount, thirdAccount } =
+                await loadFixture(deployJudgePanel)
 
             await judgePanel.init(encodeBytes32String("my proposal"), [
                 owner,
                 otherAccount,
+                thirdAccount,
             ])
 
             await judgePanel.connect(owner).commitScore(scoreHash(4n, 1n))
+
+            // can't vote twice
+            await expect(
+                judgePanel.connect(owner).commitScore(scoreHash(4n, 1n)),
+            ).to.be.revertedWith(ERRORS.onlyOneVote)
+
             await judgePanel
                 .connect(otherAccount)
                 .commitScore(scoreHash(6n, 2n))
+
+            await judgePanel
+                .connect(thirdAccount)
+                .commitScore(scoreHash(8n, 2n))
 
             await time.increase(FIVE_MINUTES + 1)
             await judgePanel.startReveal()
 
             await judgePanel.connect(owner).revealScore(4n, 1n)
 
-            await expect(judgePanel.finalize()).to.be.reverted
+            await expect(judgePanel.finalize()).to.be.revertedWith(
+                ERRORS.notAllJudges,
+            )
 
             await judgePanel.connect(otherAccount).revealScore(6n, 2n)
+            await judgePanel.connect(thirdAccount).revealScore(8n, 2n)
 
             await judgePanel.finalize()
 
-            expect(await judgePanel.getMedian()).to.eq(5n)
+            expect(await judgePanel.getMedian()).to.eq(6n)
         })
     })
 })
